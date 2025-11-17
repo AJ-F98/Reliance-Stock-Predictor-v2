@@ -23,7 +23,11 @@ df_features = load_features()
 
 # Latest available data
 latest_date = df_features.index[-1].date()
-latest_row = df_features.iloc[-1:]
+latest_row = df_features.iloc[-1:].copy()
+
+# === FIX: Drop the same volume columns used during training ===
+cols_to_drop = ['R_Vol', 'N_Vol', 'C_Vol', 'FX_Vol']
+latest_row = latest_row.drop(columns=[col for col in cols_to_drop if col in latest_row.columns])
 
 # Prediction
 prediction = model.predict(latest_row)[0]
@@ -56,7 +60,8 @@ with col2:
 if actual_close or latest_date < today:
     st.subheader("Recent Predictions")
     recent = df_features.tail(5).copy()
-    recent["Predicted"] = model.predict(df_features.tail(5))
+    recent = recent.drop(columns=[col for col in cols_to_drop if col in recent.columns])
+    recent["Predicted"] = model.predict(recent)
     recent["Predicted"] = recent["Predicted"].round(2)
     display_cols = ["R_Close", "Predicted"]
     st.dataframe(recent[display_cols].rename(columns={"R_Close": "Actual Close"}))
