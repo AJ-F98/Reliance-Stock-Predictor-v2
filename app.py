@@ -7,7 +7,7 @@ from datetime import date
 import yfinance as yf
 
 yf.set_tz_cache_location("/tmp")
-yf.utils.set_ignore_tz_errors(True)
+
 
 
 st.set_page_config(page_title="Reliance Stock Predictor", layout="wide")
