@@ -12,10 +12,9 @@ st.title("Reliance Industries – Next-Day Close Prediction")
 @st.cache_resource
 def load_model_and_features():
     model = joblib.load("reliance_model.pkl")
-    # Load the exact same CSV used for training
+
     df = pd.read_csv("reliance_final_model_ready.csv", index_col=0, parse_dates=True)
     
-    # Drop exactly the same columns we dropped during training
     cols_to_drop = ['R_Vol', 'N_Vol', 'C_Vol', 'FX_Vol']
     df = df.drop(columns=[col for col in cols_to_drop if col in df.columns])
     
@@ -23,8 +22,8 @@ def load_model_and_features():
 
 model, df_features = load_model_and_features()
 
-# Use only the last row and exactly the same columns/order as training
-feature_columns = df_features.columns.drop("Target")  # Target was dropped during training
+
+feature_columns = df_features.columns.drop("Target") 
 latest_row = df_features[feature_columns].iloc[-1:].copy()
 
 # Prediction – now guaranteed to match training

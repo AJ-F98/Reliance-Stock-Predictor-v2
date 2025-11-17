@@ -8,8 +8,7 @@ import numpy as np
 
 df = pd.read_csv("reliance_final_model_ready.csv", index_col=0, parse_dates=True)
 
-# === NEW: Drop stationary / low-importance features that hurt recent performance ===
-cols_to_drop = ['R_Vol', 'N_Vol', 'C_Vol', 'FX_Vol']  # volume rarely helps daily prediction
+cols_to_drop = ['R_Vol', 'N_Vol', 'C_Vol', 'FX_Vol']
 X = df.drop(['Target'] + cols_to_drop, axis=1)
 y = df['Target']
 
