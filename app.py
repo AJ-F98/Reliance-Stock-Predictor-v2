@@ -5,8 +5,8 @@ import joblib
 import yfinance as yf
 from datetime import date
 import yfinance as yf
+
 yf.set_tz_cache_location("/tmp")
-yf.enable_debug_mode(False)
 yf.utils.set_ignore_tz_errors(True)
 
 
