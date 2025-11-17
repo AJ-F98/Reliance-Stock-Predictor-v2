@@ -1,5 +1,9 @@
 import yfinance as yf
 import pandas as pd
+import yfinance as yf
+yf.set_tz_cache_location("/tmp")
+yf.enable_debug_mode(False)
+yf.utils.set_ignore_tz_errors(True)
 
 tickers = ["RELIANCE.NS", "^NSEI", "CL=F", "INR=X"]
 prefix  = ["R",          "N",       "C",     "FX"]

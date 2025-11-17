@@ -4,6 +4,11 @@ import pandas as pd
 import joblib
 import yfinance as yf
 from datetime import date
+import yfinance as yf
+yf.set_tz_cache_location("/tmp")
+yf.enable_debug_mode(False)
+yf.utils.set_ignore_tz_errors(True)
+
 
 st.set_page_config(page_title="Reliance Stock Predictor", layout="wide")
 st.title("Reliance Industries – Next-Day Close Prediction")
