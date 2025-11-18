@@ -1,38 +1,35 @@
-# .github/workflows/daily-update.yml
-name: Daily Model Update
+name: Daily Update
 
 on:
   schedule:
-    - cron: '30 0 * * 1-5'      # 6:00 AM IST, Mon–Fri
+    - cron: '30 0 * * 1-5'  # 6:00 AM IST
   workflow_dispatch:
 
 jobs:
-  update-and-retrain:
+  update:
     runs-on: ubuntu-latest
     permissions:
-      contents: write                  # This is crucial
+      contents: write
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GH_PAT }}   # We'll create this secret in 10 seconds
+          token: ${{ secrets.GH_PAT }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
 
-      - name: Run daily update pipeline
+      - name: Run full pipeline
         run: |
-          python update_data.py
+          python data_downloader.py
+          python add_technical_features.py
+          python create_features_and_target.py
           python train_model.py
 
-      - name: Commit & push updated data/model
+      - name: Commit & push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
