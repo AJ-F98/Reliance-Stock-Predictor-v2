@@ -9,12 +9,13 @@ on:
 jobs:
   update-and-retrain:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write                  # This is crucial
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          ref: main                  # change to 'main' if your default branch is main
+          token: ${{ secrets.GH_PAT }}   # We'll create this secret in 10 seconds
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -31,10 +32,10 @@ jobs:
           python update_data.py
           python train_model.py
 
-      - name: Commit updated data & model
+      - name: Commit & push updated data/model
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .
           git diff --quiet && git diff --staged --quiet || git commit -m "Daily update: $(date +'%Y-%m-%d')"
           git push
