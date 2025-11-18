@@ -1,12 +1,11 @@
-# app.py
+# app.py — Corrected for t+1 predictions
 import streamlit as st
 import pandas as pd
 import joblib
-import yfinance as yf
 from datetime import date, timedelta
 
 st.set_page_config(page_title="Reliance Predictor", layout="wide")
-st.title("Reliance Industries Close Price Prediction")
+st.title("Reliance Industries – Daily Close Prediction")
 
 # Load model
 @st.cache_resource
@@ -14,12 +13,12 @@ def load_model():
     return joblib.load("reliance_model.pkl")
 model = load_model()
 
-# Load full data for actual closes
+# Load live data (includes latest day for prediction)
 @st.cache_data(ttl=3600)
 def load_full_data():
     return pd.read_csv("reliance_final_model_ready_live.csv", index_col=0, parse_dates=True)
 
-# Load features for prediction (exact training columns)
+# Load features for prediction
 @st.cache_data(ttl=3600)
 def load_features():
     df = pd.read_csv("reliance_final_model_ready_live.csv", index_col=0, parse_dates=True)
@@ -29,51 +28,41 @@ def load_features():
 df_full = load_full_data()
 df_features = load_features()
 
-# Latest prediction date
-prediction_date = df_full.index[-1].date() + timedelta(days=1)  # 19-Nov if last close is 18-Nov
+# Latest date and prediction
+latest_date = df_full.index[-1].date()
+next_date = latest_date + timedelta(days=1)  # 19-Nov-2025 tonight
 prediction = round(float(model.predict(df_features.iloc[-1:])[0]), 2)
 
-# Actual close for today (18-Nov)
-actual_today = None
-today = date.today()
-ticker = yf.Ticker("RELIANCE.NS")
-hist = ticker.history(period="2d")
-if not hist.empty and hist.index[-1].date() == today:
-    actual_today = round(hist["Close"].iloc[-1], 2)
-
-# Error (only if prediction was for today)
-error_text = "—"
-if actual_today and prediction_date == today:
-    error = abs(prediction - actual_today)
-    error_pct = error / actual_today * 100
-    error_text = f"₹{error:.2f} ({error_pct:.2f}%)"
+# Actual close today (18-Nov)
+actual_today = df_full['R_Close'].iloc[-1] if latest_date == date.today() else None
 
 # Display
 col1, col2 = st.columns(2)
-st.metric("Close Price", f"{today:%d-%b-%Y}: ₹{actual_today if actual_today else 'Market open'}")
-st.metric("Predicted Price", f"{prediction_date:%d-%b-%Y}: ₹{prediction}")
-st.metric("Error", error_text)
+with col1:
+    st.metric("Close Price", f"{latest_date:%d-%b-%Y}: ₹{actual_today if actual_today else 'Market open'}")
+with col2:
+    st.metric("Predicted Price", f"{next_date:%d-%b-%Y}: ₹{prediction}")
 
-# Table: Date + Close Price + Predicted Price
-st.subheader("Predictions")
-recent_full = df_full.tail(5)
-recent_features = df_features.tail(5)
-predicted_prices = model.predict(recent_features).round(2)
+# Table with t+1 predictions
+st.subheader("Recent Data & Predictions")
+n_days = 7
+recent_full = df_full.tail(n_days + 1)  # Extra day for t+1 prediction
+recent_features = df_features.tail(n_days + 1)
+
+# Generate predictions for each day (t+1)
+predictions = pd.Series(model.predict(recent_features), index=recent_features.index).shift(-1).iloc[:-1]
+# Shift predictions forward by 1 day, drop the last (future) prediction
 
 table = pd.DataFrame({
-    "Date": recent_full.index.strftime("%d-%b-%Y"),
-    "Close Price": recent_full["R_Close"].round(2).values,
-    "Predicted Price": predicted_prices
+    "Date": recent_full.index[:-1].strftime("%d-%b-%Y"),  # Exclude the last row (today's prediction)
+    "Close Price": recent_full['R_Close'].iloc[:-1].round(2).values,
+    "Predicted Price": predictions.round(2).values
 })
 
-# Add today's actual if available (for 18-Nov row)
-if actual_today and today in df_full.index:
-    table.loc[table["Date"] == today.strftime("%d-%b-%Y"), "Close Price"] = actual_today
-
-# Add prediction row for tomorrow
+# Add tomorrow's prediction row
 tomorrow_row = pd.DataFrame({
-    "Date": [prediction_date.strftime("%d-%b-%Y")],
-    "Close Price": [actual_today if prediction_date == today else None],
+    "Date": [next_date.strftime("%d-%b-%Y")],
+    "Close Price": ["—"],
     "Predicted Price": [prediction]
 })
 table = pd.concat([table, tomorrow_row], ignore_index=True)
