@@ -1,4 +1,4 @@
-# app.py — FINAL with correct green/red arrows
+# app.py — FINAL: Clean arrow logic (green up arrow / red down arrow only)
 import streamlit as st
 import pandas as pd
 import joblib
@@ -23,44 +23,41 @@ def load_live():
 
 df_full, df_features = load_live()
 
-# Today's close and tomorrow's prediction
 today_close = round(df_full['R_Close'].iloc[-1], 2)
 today_date = df_full.index[-1].date()
 tomorrow_date = today_date + timedelta(days=1)
 tomorrow_pred = round(float(model.predict(df_features.iloc[-1:])[0]), 2)
 
-# Delta for arrow color
-delta = tomorrow_pred - today_close
+# Arrow logic
+change = tomorrow_pred - today_close
+if change > 0:
+    arrow = "↑"
+    color = "normal"      # green
+elif change < 0:
+    arrow = "↓"
+    color = "inverse"     # red
+else:
+    arrow = "→"
+    color = "off"         # grey/no arrow
 
 col1, col2 = st.columns(2)
 
 with col1:
     st.metric(
-        label="Close Price (Today)",
-        value=f"{today_date:%d-%b-%Y}",
-        delta=f"₹{today_close:.2f}"
+        "Close Price (Today)",
+        f"{today_date:%d-%b-%Y}",
+        f"₹{today_close:.2f}"
     )
 
 with col2:
-    # Green arrow if up, red arrow if down
-    if delta > 0:
-        delta_text = f"↑ ₹{tomorrow_pred:.2f}"
-        delta_color = "normal"          # green arrow
-    elif delta < 0:
-        delta_text = f"↓ ₹{tomorrow_pred:.2f}"
-        delta_color = "inverse"         # red arrow
-    else:
-        delta_text = f"→ ₹{tomorrow_pred:.2f}"
-        delta_color = "off"             # no arrow
-
     st.metric(
-        label="Predicted Close (Tomorrow)",
-        value=f"{tomorrow_date:%d-%b-%Y}",
-        delta=delta_text,
-        delta_color=delta_color
+        "Predicted Close (Tomorrow)",
+        f"{tomorrow_date:%d-%b-%Y}",
+        f"{arrow} ₹{tomorrow_pred:.2f}",
+        delta_color=color
     )
 
-# Table (same clean version as before)
+# Table (unchanged)
 st.subheader("Prediction History")
 recent = df_full.tail(7).copy()
 historical_preds = model.predict(df_features.tail(7)).round(2)
