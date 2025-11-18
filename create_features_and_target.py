@@ -1,5 +1,6 @@
 # create_features_and_target.py
 import pandas as pd
+from datetime import datetime
 
 print("Loading data with technical indicators...")
 df = pd.read_csv("reliance_with_features.csv", index_col=0, parse_dates=True)
@@ -21,11 +22,21 @@ df['Nifty_return'] = df['N_Close'].pct_change()
 df['Crude_return'] = df['C_Close'].pct_change()
 df['FX_return']    = df['FX_Close'].pct_change()
 
-# Drop rows where target is NaN (last row) and any remaining NaN from rolling
-df = df.dropna()
+# Create Target column
+df['Target'] = df['R_Close'].shift(-1)
 
-df.to_csv("reliance_final_model_ready.csv")
-print(f"Feature engineering complete!")
-print(f"   → Final dataset: {df.shape[0]:,} rows × {df.shape[1]} columns")
-print(f"   → Target column added: 'Target' = next day R_Close")
-print(f"   → Saved as reliance_final_model_ready.csv")
+# 1. Training version → safe (drop last row with NaN Target)
+df_training = df.dropna()
+df_training.to_csv("reliance_final_model_ready.csv")
+
+# 2. Live version → KEEP the last row (used by Streamlit app for today's prediction)
+#    Target = NaN is totally fine for inference
+df_live = df.copy()
+df_live.to_csv("reliance_final_model_ready_live.csv")
+
+print("Feature engineering complete!")
+print(f"   → Training CSV  : {df_training.shape[0]:,} rows → up to {df_training.index[-1].date()}")
+print(f"   → Live CSV      : {df_live.shape[0]:,} rows → up to {df_live.index[-1].date()} ← used for tonight's prediction")
+print("   → Both files saved:")
+print("        • reliance_final_model_ready.csv      (for model training)")
+print("        • reliance_final_model_ready_live.csv (for live app)")

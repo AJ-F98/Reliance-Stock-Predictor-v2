@@ -17,12 +17,12 @@ model = load_model()
 # Load full data for actual closes
 @st.cache_data(ttl=3600)
 def load_full_data():
-    return pd.read_csv("reliance_final_model_ready.csv", index_col=0, parse_dates=True)
+    return pd.read_csv("reliance_final_model_ready_live.csv", index_col=0, parse_dates=True)
 
 # Load features for prediction (exact training columns)
 @st.cache_data(ttl=3600)
 def load_features():
-    df = pd.read_csv("reliance_final_model_ready.csv", index_col=0, parse_dates=True)
+    df = pd.read_csv("reliance_final_model_ready_live.csv", index_col=0, parse_dates=True)
     cols_to_drop = ['Target', 'R_Vol', 'N_Vol', 'C_Vol', 'FX_Vol']
     return df.drop(columns=[c for c in cols_to_drop if c in df.columns])
 
