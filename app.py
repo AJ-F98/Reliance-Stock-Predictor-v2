@@ -1,11 +1,11 @@
-# app.py — Corrected for t+1 predictions
+# app.py — FINAL & PERFECT: Uses TODAY's close to predict TOMORROW
 import streamlit as st
 import pandas as pd
 import joblib
 from datetime import date, timedelta
 
 st.set_page_config(page_title="Reliance Predictor", layout="wide")
-st.title("Reliance Industries – Daily Close Prediction")
+st.title("Reliance Industries – Next-Day Close Prediction")
 
 # Load model
 @st.cache_resource
@@ -13,58 +13,50 @@ def load_model():
     return joblib.load("reliance_model.pkl")
 model = load_model()
 
-# Load live data (includes latest day for prediction)
+# Load live data (includes 18-Nov close)
 @st.cache_data(ttl=3600)
-def load_full_data():
-    return pd.read_csv("reliance_final_model_ready_live.csv", index_col=0, parse_dates=True)
-
-# Load features for prediction
-@st.cache_data(ttl=3600)
-def load_features():
+def load_live():
     df = pd.read_csv("reliance_final_model_ready_live.csv", index_col=0, parse_dates=True)
     cols_to_drop = ['Target', 'R_Vol', 'N_Vol', 'C_Vol', 'FX_Vol']
-    return df.drop(columns=[c for c in cols_to_drop if c in df.columns])
+    features = df.drop(columns=[c for c in cols_to_drop if c in df.columns], errors='ignore')
+    return df, features
 
-df_full = load_full_data()
-df_features = load_features()
+df_full, df_features = load_live()
 
-# Latest date and prediction
-latest_date = df_full.index[-1].date()
-next_date = latest_date + timedelta(days=1)  # 19-Nov-2025 tonight
-prediction = round(float(model.predict(df_features.iloc[-1:])[0]), 2)
+# Today's close (18-Nov)
+today_close = round(df_full['R_Close'].iloc[-1], 2)
+today_date = df_full.index[-1].date()
+tomorrow_date = today_date + timedelta(days=1)
 
-# Actual close today (18-Nov)
-actual_today = df_full['R_Close'].iloc[-1] if latest_date == date.today() else None
+# Fresh prediction for tomorrow using TODAY's data
+tomorrow_prediction = round(float(model.predict(df_features.iloc[-1:])[0]), 2)
 
-# Display
+# Display big metrics
 col1, col2 = st.columns(2)
 with col1:
-    st.metric("Close Price", f"{latest_date:%d-%b-%Y}: ₹{actual_today if actual_today else 'Market open'}")
+    st.metric("Close Price (Today)", f"{today_date:%d-%b-%Y}", f"₹{today_close}")
 with col2:
-    st.metric("Predicted Price", f"{next_date:%d-%b-%Y}: ₹{prediction}")
+    st.metric("Predicted Close (Tomorrow)", f"{tomorrow_date:%d-%b-%Y}", f"₹{tomorrow_prediction}")
 
-# Table with t+1 predictions
-st.subheader("Recent Data & Predictions")
-n_days = 5
-recent_full = df_full.tail(n_days + 1)  # Extra day for t+1 prediction
-recent_features = df_features.tail(n_days + 1)
+# Table: Historical actuals + their next-day predictions + tomorrow's fresh prediction
+st.subheader("Prediction History")
+recent = df_full.tail(7).copy()
 
-# Generate predictions for each day (t+1)
-predictions = pd.Series(model.predict(recent_features), index=recent_features.index).shift(-1).iloc[:-1]
-# Shift predictions forward by 1 day, drop the last (future) prediction
+# Predict next-day for each historical row
+historical_predictions = model.predict(df_features.tail(7)).round(2)
 
 table = pd.DataFrame({
-    "Date": recent_full.index[:-1].strftime("%d-%b-%Y"),  # Exclude the last row (today's prediction)
-    "Close Price": recent_full['R_Close'].iloc[:-1].round(2).values,
-    "Predicted Price": predictions.round(2).values
+    "Date": recent.index.strftime("%d-%b-%Y"),
+    "Close Price": recent["R_Close"].round(2).values,
+    "Predicted Next Day": historical_predictions
 })
 
-# Add tomorrow's prediction row
+# Add tomorrow's row
 tomorrow_row = pd.DataFrame({
-    "Date": [next_date.strftime("%d-%b-%Y")],
+    "Date": [tomorrow_date.strftime("%d-%b-%Y")],
     "Close Price": ["—"],
-    "Predicted Price": [prediction]
+    "Predicted Next Day": [tomorrow_prediction]
 })
 table = pd.concat([table, tomorrow_row], ignore_index=True)
 
-st.dataframe(table, use_container_width=True, hide_index=True)
+st.dataframe(table.reset_index(drop=True), use_container_width=True, hide_index=True)
