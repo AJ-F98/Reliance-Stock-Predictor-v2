@@ -8,7 +8,7 @@ from datetime import date, timedelta
 st.set_page_config(page_title="Reliance Predictor", layout="wide")
 st.title("Reliance Industries – Next-Day Close Prediction")
 
-# Load latest committed model and data
+# Load model & data
 @st.cache_resource
 def load_model():
     return joblib.load("reliance_model.pkl")
@@ -22,22 +22,21 @@ def load_features():
 model = load_model()
 df = load_features()
 
-# Latest complete row (yesterday) → predict tomorrow
+# Latest row → predict tomorrow
 latest_row = df.iloc[-1:]
 prediction = round(float(model.predict(latest_row)[0]), 2)
-latest_date = df.index[-1].date()           # Yesterday
+latest_date = df.index[-1].date()
 tomorrow_date = latest_date + timedelta(days=1)
 
-# Actual close today (live from yfinance)
+# Actual close today
 actual_today = None
 ticker = yf.Ticker("RELIANCE.NS")
 hist = ticker.history(period="2d")
 if not hist.empty and hist.index[-1].date() == date.today():
     actual_today = round(hist["Close"].iloc[-1], 2)
 
-# Display
+# Display metrics
 col1, col2 = st.columns(2)
-
 with col1:
     if actual_today:
         st.metric("Actual Close Today", f"{date.today():%d-%b-%Y}: ₹{actual_today}")
@@ -47,19 +46,22 @@ with col1:
 with col2:
     st.metric("Predicted Close Tomorrow", f"{tomorrow_date:%d-%b-%Y}: ₹{prediction}")
 
-# Recent predictions table (only Date + Predicted Close)
+# Recent predictions table (clean & correct)
 st.subheader("Recent Predictions")
 recent = df.tail(8).copy()
-recent["Predicted"] = model.predict(recent).round(2)
-recent = recent[["R_Close"]].copy()
-recent["Predicted"] = model.predict(df.iloc[-len(recent):][recent.columns.drop("R_Close")]).round(2)
+
+# Predict using EXACT same columns/order as training
+X_recent = recent.drop(columns=['R_Close'], errors='ignore')  # Keep all features except R_Close if present
+predictions = model.predict(X_recent).round(2)
 
 # Build clean display table
 display_df = pd.DataFrame({
     "Date": recent.index.strftime("%d-%b-%Y"),
-    "Predicted Close": recent["Predicted"]
+    "Predicted Close": predictions
 })
-display_df = display_df.iloc[:-1]  # Remove last row (tomorrow's prediction already shown above)
+
+# Remove the last row (tomorrow) — already shown in metric
+display_df = display_df.iloc[:-1]
 
 st.dataframe(
     display_df.reset_index(drop=True),
