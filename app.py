@@ -45,7 +45,7 @@ with col2:
 
 # Table with t+1 predictions
 st.subheader("Recent Data & Predictions")
-n_days = 7
+n_days = 5
 recent_full = df_full.tail(n_days + 1)  # Extra day for t+1 prediction
 recent_features = df_features.tail(n_days + 1)
 
