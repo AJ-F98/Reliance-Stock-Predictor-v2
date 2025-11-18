@@ -56,8 +56,8 @@ st.metric("Error", error_text)
 
 # Table: Date + Close Price + Predicted Price
 st.subheader("Predictions")
-recent_full = df_full.tail(7)
-recent_features = df_features.tail(7)
+recent_full = df_full.tail(5)
+recent_features = df_features.tail(5)
 predicted_prices = model.predict(recent_features).round(2)
 
 table = pd.DataFrame({
