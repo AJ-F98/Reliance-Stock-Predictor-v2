@@ -14,17 +14,17 @@ def load_model():
     return joblib.load("reliance_model.pkl")
 model = load_model()
 
-# Load features — EXACT same columns used in training
+# Load data and drop EXACTLY the same columns as in train_model.py
 @st.cache_data(ttl=3600)
 def load_features():
     df = pd.read_csv("reliance_final_model_ready.csv", index_col=0, parse_dates=True)
-    # These are the exact columns we dropped during training
-    cols_to_drop = ['R_Close', 'R_Vol', 'N_Vol', 'C_Vol', 'FX_Vol', 'Target']
+    # EXACT same drops as in train_model.py
+    cols_to_drop = ['Target', 'R_Vol', 'N_Vol', 'C_Vol', 'FX_Vol']
     return df.drop(columns=[c for c in cols_to_drop if c in df.columns])
 
-df_features = load_features()  # This now has ONLY the features the model was trained on
+df_features = load_features()   # Now has EXACT same columns as training X
 
-# Prediction for tomorrow (from latest row = yesterday)
+# Prediction for tomorrow
 latest_row = df_features.iloc[-1:]
 prediction = round(float(model.predict(latest_row)[0]), 2)
 latest_date = df_features.index[-1].date()
@@ -50,17 +50,13 @@ with col2:
 
 # Recent predictions table
 st.subheader("Recent Predictions")
-recent_features = df_features.tail(8)
+recent = df_features.tail(8)
 
-# Predict using EXACT same DataFrame (no column changes)
-recent_predictions = model.predict(recent_features).round(2)
+predictions = model.predict(recent).round(2)
 
 display_df = pd.DataFrame({
-    "Date": recent_features.index.strftime("%d-%b-%Y"),
-    "Predicted Close": recent_predictions
-})
-
-# Remove tomorrow's prediction (already shown above)
-display_df = display_df.iloc[:-1].reset_index(drop=True)
+    "Date": recent.index.strftime("%d-%b-%Y"),
+    "Predicted Close": predictions
+}).iloc[:-1].reset_index(drop=True)   # Remove tomorrow (already shown above)
 
 st.dataframe(display_df, use_container_width=True, hide_index=True)
