@@ -1,4 +1,4 @@
-# app.py — FINAL: Clean arrow logic (green up arrow / red down arrow only)
+# app.py — FINAL & BULLETPROOF: ONLY ONE arrow (never both)
 import streamlit as st
 import pandas as pd
 import joblib
@@ -7,13 +7,12 @@ from datetime import date, timedelta
 st.set_page_config(page_title="Reliance Predictor", layout="wide")
 st.title("Reliance Industries – Next-Day Close Prediction")
 
-# Load model
+# Load model & data
 @st.cache_resource
 def load_model():
     return joblib.load("reliance_model.pkl")
 model = load_model()
 
-# Load live data
 @st.cache_data(ttl=3600)
 def load_live():
     df = pd.read_csv("reliance_final_model_ready_live.csv", index_col=0, parse_dates=True)
@@ -23,13 +22,14 @@ def load_live():
 
 df_full, df_features = load_live()
 
-today_close = round(df_full['R_Close'].iloc[-1], 2)
-today_date = df_full.index[-1].date()
+today_close   = round(df_full['R_Close'].iloc[-1], 2)
+today_date    = df_full.index[-1].date()
 tomorrow_date = today_date + timedelta(days=1)
 tomorrow_pred = round(float(model.predict(df_features.iloc[-1:])[0]), 2)
 
-# Arrow logic
 change = tomorrow_pred - today_close
+
+# Arrow + color logic
 if change > 0:
     arrow = "↑"
     color = "normal"      # green
@@ -38,34 +38,31 @@ elif change < 0:
     color = "inverse"     # red
 else:
     arrow = "→"
-    color = "off"         # grey/no arrow
+    color = "off"
 
 col1, col2 = st.columns(2)
 
 with col1:
-    st.metric(
-        "Close Price (Today)",
-        f"{today_date:%d-%b-%Y}",
-        f"₹{today_close:.2f}"
-    )
+    st.metric("Close Price (Today)", f"{today_date:%d-%b-%Y}", f"₹{today_close:.2f}")
 
 with col2:
     st.metric(
-        "Predicted Close (Tomorrow)",
-        f"{tomorrow_date:%d-%b-%Y}",
-        f"{arrow} ₹{tomorrow_pred:.2f}",
-        delta_color=color
+        label="Predicted Close (Tomorrow)",
+        value=f"{tomorrow_date:%d-%b-%Y}",
+        delta=f"{arrow} ₹{tomorrow_pred:.2f}",
+        delta_color=color,
+        help=""        # ← THIS LINE REMOVES THE DEFAULT TINY ARROW
     )
 
 # Table (unchanged)
 st.subheader("Prediction History")
 recent = df_full.tail(7).copy()
-historical_preds = model.predict(df_features.tail(7)).round(2)
+preds  = model.predict(df_features.tail(7)).round(2)
 
 table = pd.DataFrame({
     "Date": recent.index.strftime("%d-%b-%Y"),
     "Close Price": recent["R_Close"].round(2).values,
-    "Predicted Next Day": historical_preds
+    "Predicted Next Day": preds
 })
 
 tomorrow_row = pd.DataFrame({
