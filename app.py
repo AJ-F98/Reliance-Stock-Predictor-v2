@@ -1,4 +1,4 @@
-# app.py — FINAL & PERFECT: Uses TODAY's close to predict TOMORROW
+# app.py — FINAL with correct green/red arrows
 import streamlit as st
 import pandas as pd
 import joblib
@@ -13,7 +13,7 @@ def load_model():
     return joblib.load("reliance_model.pkl")
 model = load_model()
 
-# Load live data (includes 18-Nov close)
+# Load live data
 @st.cache_data(ttl=3600)
 def load_live():
     df = pd.read_csv("reliance_final_model_ready_live.csv", index_col=0, parse_dates=True)
@@ -23,39 +23,58 @@ def load_live():
 
 df_full, df_features = load_live()
 
-# Today's close (18-Nov)
+# Today's close and tomorrow's prediction
 today_close = round(df_full['R_Close'].iloc[-1], 2)
 today_date = df_full.index[-1].date()
 tomorrow_date = today_date + timedelta(days=1)
+tomorrow_pred = round(float(model.predict(df_features.iloc[-1:])[0]), 2)
 
-# Fresh prediction for tomorrow using TODAY's data
-tomorrow_prediction = round(float(model.predict(df_features.iloc[-1:])[0]), 2)
+# Delta for arrow color
+delta = tomorrow_pred - today_close
 
-# Display big metrics
 col1, col2 = st.columns(2)
-with col1:
-    st.metric("Close Price (Today)", f"{today_date:%d-%b-%Y}", f"₹{today_close}")
-with col2:
-    st.metric("Predicted Close (Tomorrow)", f"{tomorrow_date:%d-%b-%Y}", f"₹{tomorrow_prediction}")
 
-# Table: Historical actuals + their next-day predictions + tomorrow's fresh prediction
+with col1:
+    st.metric(
+        label="Close Price (Today)",
+        value=f"{today_date:%d-%b-%Y}",
+        delta=f"₹{today_close:.2f}"
+    )
+
+with col2:
+    # Green arrow if up, red arrow if down
+    if delta > 0:
+        delta_text = f"↑ ₹{tomorrow_pred:.2f}"
+        delta_color = "normal"          # green arrow
+    elif delta < 0:
+        delta_text = f"↓ ₹{tomorrow_pred:.2f}"
+        delta_color = "inverse"         # red arrow
+    else:
+        delta_text = f"→ ₹{tomorrow_pred:.2f}"
+        delta_color = "off"             # no arrow
+
+    st.metric(
+        label="Predicted Close (Tomorrow)",
+        value=f"{tomorrow_date:%d-%b-%Y}",
+        delta=delta_text,
+        delta_color=delta_color
+    )
+
+# Table (same clean version as before)
 st.subheader("Prediction History")
 recent = df_full.tail(7).copy()
-
-# Predict next-day for each historical row
-historical_predictions = model.predict(df_features.tail(7)).round(2)
+historical_preds = model.predict(df_features.tail(7)).round(2)
 
 table = pd.DataFrame({
     "Date": recent.index.strftime("%d-%b-%Y"),
     "Close Price": recent["R_Close"].round(2).values,
-    "Predicted Next Day": historical_predictions
+    "Predicted Next Day": historical_preds
 })
 
-# Add tomorrow's row
 tomorrow_row = pd.DataFrame({
     "Date": [tomorrow_date.strftime("%d-%b-%Y")],
     "Close Price": ["—"],
-    "Predicted Next Day": [tomorrow_prediction]
+    "Predicted Next Day": [tomorrow_pred]
 })
 table = pd.concat([table, tomorrow_row], ignore_index=True)
 
