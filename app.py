@@ -61,11 +61,17 @@ with col2:
 
 # Recent performance table
 st.subheader("Recent Predictions vs Actual")
-recent = df_features.tail(6).copy()
-recent = recent[feature_columns]
-recent["Predicted"] = model.predict(recent).round(2)
-recent["Actual_Next_Day"] = df_features["Target"].tail(6).round(2).values
 
-display_df = recent[["Actual_Next_Day", "Predicted"]].copy()
-display_df.columns = ["Actual Close (t+1)", "Predicted Close"]
-st.dataframe(display_df.style.format("₹{:.2f}"), use_container_width=True)
+# Take last 5 trading days that have actual next-day close
+display_data = df_features[['R_Close', 'Target']].tail(5).copy()
+display_data["Predicted"] = model.predict(df_features[feature_columns].tail(5)).round(2)
+display_data = display_data.rename(columns={
+    "R_Close": "Actual Close (t)",
+    "Target": "Actual Close (t+1)"
+})
+display_data = display_data[["Actual Close (t)", "Actual Close (t+1)", "Predicted"]].round(2)
+
+st.dataframe(
+    display_data.style.format("₹{:.2f}"),
+    use_container_width=True
+)
