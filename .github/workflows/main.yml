@@ -2,7 +2,7 @@ name: Daily Update
 
 on:
   schedule:
-    - cron: '30 0 * * 1-5'  # 6:00 AM IST
+    - cron: '30 0 * * 1-5'   # Every weekday at 6:00 AM IST
   workflow_dispatch:
 
 jobs:
@@ -24,12 +24,12 @@ jobs:
 
       - name: Run full pipeline
         run: |
-          python data_downloader.py
-          python add_technical_features.py
+          python get_data.py
+          python add_technical_indicators.py
           python create_features_and_target.py
           python train_model.py
 
-      - name: Commit & push
+      - name: Commit and push if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
